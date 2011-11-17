@@ -1,15 +1,30 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl ObjectDB-InflateColumn.t'
+#!/usr/bin/perl
+use strict;
+use warnings;
 
-#########################
+use Test::More;
 
-# change 'tests => 1' to 'tests => last_test_to_print';
+    pass("Preload ObjectDB\n".'*' x 10);
+SKIP: {
+    eval {require ObjectDB};
+    skip "ObjectDB not installed", 'no_plan' if $@;
+    
+    pass("Check interface\n".'*' x 10);
+    ok(ObjectDB->can('inflate_column') ? 0 : 1, 'ObjectDB::inflate_column is clear');
+    ok(ObjectDB::Schema->can('inflate_column') ? 0 : 1, 'ObjectDB::Schema::inflate_column is clear');
+    ok(ObjectDB::Schema->can('_inflate_columns_info') ? 0 : 1, 'ObjectDB::Schema::_inflate_columns_info is clear');
+    
+    pass("Try load ObjectDB::InflateColumn\n".'*' x 10);
+    use_ok('ObjectDB::InflateColumn');
+    
+    pass("Check new interface\n".'*' x 10);
+    can_ok('ObjectDB::Schema', 'inflate_column');
+    can_ok('ObjectDB::Schema', '_inflate_columns_info');
+    can_ok('ObjectDB', 'inflate_column');
+    
+    
+            
+}        
 
-use Test::More tests => 1;
-BEGIN { use_ok('ObjectDB::InflateColumn') };
-
-#########################
-
-# Insert your test code below, the Test::More module is use()ed here so read
-# its man page ( perldoc Test::More ) for help writing this test script.
-
+    pass("end\n".'*' x 10);
+    done_testing();
