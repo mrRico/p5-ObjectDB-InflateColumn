@@ -15,53 +15,59 @@ BEGIN {
 
 use Sub::Install;
 
-# extend ObjectDB::Schema
-Sub::Install::install_sub({
-    code => sub {
-        my $self = shift;
-        my $field = shift;
-        unless ($field) {
-            return $self->{_inflate_columns_info} ||= {};
-        }; 
-        my $param = ref $_[0] eq 'HASH' ? $_[0] : {@_};
-        $param->{inflate} ||= sub {$_[0]};
-        $param->{deflate} ||= sub {$_[0]};
-        
-        $self->{_inflate_columns_info}->{$field} = $param;
-        
-        return 1;
-    },
-    into => 'ObjectDB::Schema',
-    as   => 'inflate_column'
-});
-# method 'inflate_column' has been added
-
-Sub::Install::install_sub({
-    code => sub {$_[0]->{_inflate_columns_info} ||= {}},
-    into => 'ObjectDB::Schema',
-    as   => '_inflate_columns_info'
-});
-# method '_inflate_columns_info' has been added (access to field {_inflate_columns_info})
-
-# extend ObjectDB
-Sub::Install::install_sub({
-    code => sub {
-        my $self = shift;
-        my $inflate_info = $self->schema->_inflate_columns_info;
-        if (exists $inflate_info->{$_[0]}) {
-            if (@_==1) {
-                return $inflate_info->{$_[0]}->{deflate}->($self->column($_[0]));
-            } elsif (@_==2) {
-                return $self->column($_[0], $inflate_info->{$_[0]}->{inflate}->($_[1]));
-            };
-        };
-        return $self->column(@_);
-    },
-    into => 'ObjectDB',
-    as   => 'inflate_column'
-});
-# method 'inflate_column' has been added
-
+my $imported = 0;
+sub import {
+	my $class = shift;
+	return if $imported;
+	
+	# extend ObjectDB::Schema
+	Sub::Install::install_sub({
+	    code => sub {
+	        my $self = shift;
+	        my $field = shift;
+	        unless ($field) {
+	            return $self->{_inflate_columns_info} ||= {};
+	        }; 
+	        my $param = ref $_[0] eq 'HASH' ? $_[0] : {@_};
+	        $param->{inflate} ||= sub {$_[0]};
+	        $param->{deflate} ||= sub {$_[0]};
+	        
+	        $self->{_inflate_columns_info}->{$field} = $param;
+	        
+	        return 1;
+	    },
+	    into => 'ObjectDB::Schema',
+	    as   => 'inflate_column'
+	});
+	# method 'inflate_column' has been added
+	
+	Sub::Install::install_sub({
+	    code => sub {$_[0]->{_inflate_columns_info} ||= {}},
+	    into => 'ObjectDB::Schema',
+	    as   => '_inflate_columns_info'
+	});
+	# method '_inflate_columns_info' has been added (access to field {_inflate_columns_info})
+	
+	# extend ObjectDB
+	Sub::Install::install_sub({
+	    code => sub {
+	        my $self = shift;
+	        my $inflate_info = $self->schema->_inflate_columns_info;
+	        if (exists $inflate_info->{$_[0]}) {
+	            if (@_==1) {
+	                return $inflate_info->{$_[0]}->{deflate}->($self->column($_[0]));
+	            } elsif (@_==2) {
+	                return $self->column($_[0], $inflate_info->{$_[0]}->{inflate}->($_[1]));
+	            };
+	        };
+	        return $self->column(@_);
+	    },
+	    into => 'ObjectDB',
+	    as   => 'inflate_column'
+	});
+	# method 'inflate_column' has been added
+	$imported++;
+};
 
 1;
 __END__
@@ -70,11 +76,18 @@ __END__
 ObjectDB::InflateColumn - automatically create references from column data
 
 =head1 SYNOPSIS
+
+    package MyApp::ObjectDB;		
+	use base qw(ObjectDB);	
+	use ObjectDB::InflateColumn;
+    
+    .....
+    
+    1;    
     
     # in your table classes
-    package MyApp::ORM::SomeTokenAction;
-    use strict;
-    use warnings;
+    package MyApp::ORM::SomeTokenAction;    
+    use base 'MyApp::ObjectDB';
     
     # some schema description
     __PACKAGE__->schema(
@@ -100,9 +113,6 @@ ObjectDB::InflateColumn - automatically create references from column data
     
     # in main code
     package main;
-    use strict;
-    use warnings;
-    
     use MyApp::ORM::SomeTokenAction;
     
     # create entity
